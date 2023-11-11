@@ -1,0 +1,22 @@
+{% extends 'app/base.html' %}
+{% load static %}
+{% block title %}Pizza Tracker{% endblock %}
+
+{% block main-content %}
+  <div class="container mt-3">
+    <br>
+    <h2 class="text-center">Pizza Tracker</h2>
+    <br>
+    <div class=" row container">
+      <p class="fs-4 text-center">Статус заказа
+      Номер заказа для отслеживания статуса отправляется на электронный адрес или смс после подтверждения оператором колл-центра</p>
+    </div>
+    <br><br>
+    <h2 class="text-center">Этапы выполнения заказа</h2>
+    <br>
+    <div class=" row container">
+      <p class="fs-4 text-center">1. Заказ принят
+      2. Готовится 3. На упаковке 4.готов
+    </div>
+  </div>
+{% endblock main-content %}

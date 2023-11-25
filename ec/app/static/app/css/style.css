@@ -84,3 +84,13 @@
 .goodnesssec a{
     text-decoration: none;
 }
+
+.map {
+    width: 600px;
+    height: 600px;
+    background-color: #333;
+}
+
+[class*="copyrights-pane"] {
+    display: none !important;
+}

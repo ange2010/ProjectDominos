@@ -25,16 +25,15 @@
             </div>
           {% endfor %}
           <p class="fw-bold">Всего к оплате: {{totalamount}} руб.</p>
-            <small>Условия:  <br> <br> </small>
-            <br><br><br>
-            <br><br><br>
-            <br><br><br>
-            <br><br><br>
+            <small>Найти пиццерию Domino`s, ближайшую от вашего местоположения: <br><br> </small>
+
+            <div id="map" class="map" ></div>
             <br><br>
-            <br><br><br>
+            <br><br>
         </div>
         <div class="col-sm-4 offset-sm-1">
-           <h4>Выберите адрес доставки</h4>
+           <h4>Адрес доставки</h4>
+
            <hr>
            <form method="post" id="myform">
              {% csrf_token %}
@@ -47,9 +46,9 @@
                </div>
              </div>
                <div class="form-check mt-2 mb-5">
-                  <input class="form-check-input" type="radio" name="custid" id="custadd{{forloop.counter}}" value="{{ad.id}}">
                   <label class="form-check-label fw-bold" for="custadd{{forloop.counter}}">
                   Адрес:{{forloop.counter}} </label>
+                  <input class="form-check-input" type="radio" name="custid" id="custadd{{forloop.counter}}" value="{{ad.id}}">
                </div>
              {% endfor %}
              <div class="form-check mb-3">
@@ -57,10 +56,13 @@
                 <input type="number" class="form-control" name="totamount" value={{totalamount}} readonly>
              </div>
              <div class="text-end">
-               <div ><a href="{% url 'paymentdone' %}" class="btn btn-warning mt-3 px-5 fw-bold">Оплатить</a></div>
+                 <div ><a href="{% url 'paymentdone' %}" class="btn btn-warning mt-3 px-5 fw-bold">Оплатить</a></div>
              </div>
            </form>
         </div>
+
     </div>
  </div>
 {% endblock main-content %}
+
+

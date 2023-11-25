@@ -35,12 +35,13 @@ class Product(models.Model):
 
 class Customer(models.Model):
     user = models.ForeignKey(User, on_delete=models.CASCADE)
-    name = models.CharField(max_length=200)
-    locality = models.CharField(max_length=200)
-    city = models.CharField(max_length=50)
-    mobile = models.IntegerField(default=0)
-    zipcode = models.IntegerField()
-    state = models.CharField(choices=STATE_CHOICES, max_length=100)
+    name = models.CharField(max_length=200, verbose_name="Имя")
+    locality = models.CharField(max_length=200, verbose_name="Адрес")
+    city = models.CharField(max_length=50, verbose_name="Город")
+    mobile = models.IntegerField(default=0, verbose_name="Телефон")
+    zipcode = models.IntegerField(default=0, verbose_name="Индекс")
+    state = models.CharField(choices=STATE_CHOICES, max_length=100, verbose_name="Область")
+    promotional_code = models.BooleanField(default=False, blank=True)
 
     def __str__(self):
         return self.name
@@ -72,6 +73,7 @@ class Payment(models.Model):
 class OrderPlaced(models.Model):
     user = models.ForeignKey(User, on_delete=models.CASCADE)
     product = models.ForeignKey(Product, on_delete=models.CASCADE)
+    customer = models.ForeignKey(Customer, on_delete=models.CASCADE, blank=True, null=True)
     quantity = models.PositiveIntegerField(default=1)
     ordered_date = models.DateTimeField(auto_now_add=True)
     status = models.CharField(max_length=50, choices=STATUS_CHOICES, default='Принят')
@@ -80,7 +82,35 @@ class OrderPlaced(models.Model):
     def total_cost(self):
         return self.quantity * self.product.selling_price
 
-
 class Wishlist(models.Model):
     user = models.ForeignKey(User, on_delete=models.CASCADE)
     product = models.ForeignKey(Product, on_delete=models.CASCADE)
+
+
+# function init () {
+#         var map = new ymaps.Map("map", {
+#             center: [53.896838809027074,30.33199621880766],
+#             zoom: 18
+#         });
+#
+#         var myGeoObject = new ymaps.GeoObject({
+#             geometry: {
+#                 type: "Point", // тип геометрии - точка
+#                 coordinates: [53.896838809027074,30.33199621880766] // координаты точки
+#             }
+#         });
+#         map.geoObjects.add(myGeoObject);
+#
+#
+#         var myPlacemark = new ymaps.Placemark([53.896838809027074,30.33199621880766]);
+#         map.geoObjects.add(myPlacemark);
+# }
+# ymaps.ready(init);
+
+# ymaps.ready(function () {
+#      var map = new ymaps.Map("map", {
+#        center: [53.896838809027074,30.33199621880766],
+#        zoom: 18
+#      });
+# });
+

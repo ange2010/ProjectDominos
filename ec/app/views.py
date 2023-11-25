@@ -1,4 +1,5 @@
 from django.db.models import Count
+from django.http import HttpResponse
 from django.http import JsonResponse
 from django.shortcuts import render, redirect
 from django.views import View
@@ -12,7 +13,11 @@ from rest_framework.viewsets import ModelViewSet
 from .serializers import ProductSerializer, OrderPlacedSerializer
 from django.conf import settings
 import time
-from .tasks import send
+from .tasks import send, send2, set_status
+# from .tasks import job
+from .tasks import send_mail_func
+from django.core.mail import send_mail
+from django.utils import timezone
 
 def home(request):
     totalitem = 0
@@ -52,10 +57,11 @@ class CategoryTitle(View):
 
 class ProductDetail(View):
     def get(self, request, pk):
+        product = Product.objects.get(pk=pk)
+        wishlist = Wishlist.objects.filter(Q(product=product) & Q(user=request.user))
         totalitem = 0
         if request.user.is_authenticated:
             totalitem = len(Cart.objects.filter(user=request.user))
-        product = Product.objects.get(pk=pk)
         return render(request, "app/productdetail.html", locals())
 
 class CustomerRegistrationView(View):
@@ -178,51 +184,28 @@ def payment_done(request):
         value = p.quantity * p.product.selling_price
         famount = famount + value
     totalamount = famount + 0
-    payment = Payment(user=user)
-    payment.amount = totalamount
+    payment = Payment(user=user, amount=totalamount)
     payment.paid = True
     payment.save()
+    customer = Customer.objects.get(user=user)
     cart = Cart.objects.filter(user=user)
     for c in cart:
-        OrderPlaced(user=user, product=c.product, quantity=c.quantity, payment=payment).save()
+        OrderPlaced(user=user, customer=customer, product=c.product, quantity=c.quantity, payment=payment).save()
         c.delete()
         messages.success(request, 'Оплата получена! Ваш заказ выполняется!')
+        order = OrderPlaced.objects.filter(user=user)
         send.delay(user.email)
-
+        for o in order:
+            set_status.delay(o.id)
+        if customer.promotional_code == False:
+            send2.delay(user.email)
+            customer.promotional_code = True
+            customer.save()
+    # job.delay()
     return redirect('orders')
 
-class ProductView(ModelViewSet):
-    queryset = Product.objects.all()
-    serializer_class = ProductSerializer
-
-class OrderPlacedView(ModelViewSet):
-    queryset = OrderPlaced.objects.all()
-    serializer_class = OrderPlacedSerializer
-
+@login_required
 def payment_status1(request):
-    user = request.user
-    order_placed = OrderPlaced.objects.filter(user=user)
-    for o in order_placed:
-        if o.status == 'Принят':
-            time.sleep(5)
-            o.status = 'Готов'
-            o.save()
-            # time.sleep(3)
-            # o.status = 'В пути'
-            # time.sleep(3)
-            # o.status = 'Доставлен'
-            # o.save()
-        elif o.status == 'Готов':
-            time.sleep(3)
-            o.status = 'В пути'
-            o.save()
-            # time.sleep(3)
-            # o.status = 'Доставлен'
-            # o.save()
-        elif o.status == 'В пути':
-            time.sleep(3)
-            o.status = 'Доставлен'
-            o.save()
     return redirect('orders')
 
 @login_required
@@ -230,12 +213,16 @@ def orders(request):
     totalitem = 0
     if request.user.is_authenticated:
         totalitem = len(Cart.objects.filter(user=request.user))
-    order_placed = OrderPlaced.objects.filter(user=request.user)
+    orderplaced = OrderPlaced.objects.filter(user=request.user)
     return render(request, "app/orders.html", locals())
+
+def send_mail_to_all_users(request):
+    send_mail_func.delay()
+    return HttpResponse('Бонусы отправлены покупателям!')
 
 @login_required
 def plus_cart(request):
-    if request.method =='GET':
+    if request.method == 'GET':
         prod_id = request.GET['prod_id']
         c = Cart.objects.get(Q(product=prod_id) & Q(user=request.user))
         c.quantity += 1
@@ -248,9 +235,9 @@ def plus_cart(request):
             amount = amount + value
         totalamount = amount
         data = {
-            'quantity':c.quantity,
-            'amount':amount,
-            'totalamount':totalamount,
+            'quantity': c.quantity,
+            'amount': amount,
+            'totalamount': totalamount,
         }
         return JsonResponse(data)
 
@@ -305,6 +292,16 @@ def search(request):
 
 
 
+class ProductView(ModelViewSet):
+    queryset = Product.objects.all()
+    serializer_class = ProductSerializer
+
+class OrderPlacedView(ModelViewSet):
+    queryset = OrderPlaced.objects.all()
+    serializer_class = OrderPlacedSerializer
+
+
+
 
 # @login_required
 # def show_wishlist(request):
@@ -317,6 +314,17 @@ def search(request):
 #     product = Wishlist.objects.filter(user=user)
 #     return render(request, 'app/wishlist.html', locals())
 
+# def plus_wishlist(request):
+#     if request.method == 'GET':
+#         prod_id = request.GET['prod_id']
+#         product = Product.objects.get(id=prod_id)
+#         user = request.user
+#         Wishlist(user=user, product=product).save()
+#         data = {
+#             'message': 'Wishlist Added Successfully',
+#         }
+#         return JsonResponse(data)
+#
 # def minus_wishlist(request):
 #     if request.method == 'GET':
 #         prod_id = request.GET['prod_id']
@@ -327,3 +335,19 @@ def search(request):
 #             'message': 'Wishlist Remove successfully',
 #         }
 #         return JsonResponse(data)
+
+# today = timezone.now()
+    # t = today.day - 1
+    # ex = OrderPlaced.objects.filter(Q(status='Доставлен') & Q(ordered_date__day__lte=today.day, ordered_date__day__gte=t))
+    # print(ex)
+    # for e in ex:
+    #     print(e)
+    #     user1 = e.customer.user
+    #     send_mail(
+    #         'Ваш промокод',
+    #         f" Получите {e.customer.name} ваш промокод за заказ {e.product.title}!",
+    #         'angelatim11111@gmail.com',
+    #         [user1.email],
+    #         fail_silently=False,
+    #     )
+    #     print(e.ordered_date)
